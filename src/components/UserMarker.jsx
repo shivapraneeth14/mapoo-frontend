@@ -1,41 +1,23 @@
 import { Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import { getIcon } from './AvatarIcon'
-import theme from '../styles/theme'
-
-const COLORS = [
-  '#4f46e5', '#0891b2', '#059669', '#d97706',
-  '#dc2626', '#7c3aed', '#db2777', '#2563eb',
-]
-
-function hashColor(name) {
-  if (!name) return COLORS[0]
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return COLORS[Math.abs(hash) % COLORS.length]
-}
 
 function createIcon(avatarCategory, username) {
   const emoji = getIcon(avatarCategory)
-  const color = hashColor(username)
-  const html = `
-    <div style="
-      width: 42px; height: 42px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-      background: ${color};
-      box-shadow: 0 0 0 2px white, 0 2px 8px rgba(0,0,0,0.2);
-      cursor: pointer;
-    ">${emoji}</div>
-  `
   return L.divIcon({
-    html,
+    html: `<div class="map-marker" style="
+      width:34px;height:34px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:16px;
+      background:#EAF3DE;
+      border:2px solid #ECEAE6;
+      box-shadow:3px 3px 6px rgba(163,161,155,0.4),-3px -3px 6px rgba(255,255,255,0.7);
+      color:#3B6D11;
+    ">${emoji}</div>`,
     className: '',
-    iconSize: [42, 42],
-    iconAnchor: [21, 21],
-    popupAnchor: [0, -24],
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -20],
   })
 }
 
@@ -49,20 +31,17 @@ export default function UserMarker({ user, onClick }) {
       eventHandlers={{ click: () => onClick?.(user) }}
     >
       <Popup>
-        <div style={{
-          textAlign: 'center', minWidth: 120, fontFamily: '-apple-system, sans-serif',
-        }}>
+        <div style={{ textAlign: 'center', minWidth: 120, fontFamily: '-apple-system, sans-serif' }}>
           <div style={{
-            width: 48, height: 48, borderRadius: '50%',
+            width: 44, height: 44, borderRadius: '50%',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24,
-            background: hashColor(user.username),
+            fontSize: 22, background: '#EAF3DE', color: '#3B6D11',
             marginBottom: 8,
           }}>
             {getIcon(user.avatarCategory)}
           </div>
-          <div style={{ fontWeight: 600, fontSize: 14, color: theme.text }}>{user.username}</div>
-          <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, color: '#23241F' }}>{user.username}</div>
+          <div style={{ fontSize: 12, color: '#6B6A65', marginTop: 4 }}>
             {user.interests?.join(', ') || 'No interests'}
           </div>
         </div>

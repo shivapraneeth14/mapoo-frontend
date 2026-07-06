@@ -32,10 +32,12 @@ function AppLayout({ children }) {
   const location = useLocation()
   const hideNav = location.pathname === '/' || location.pathname === '/onboarding'
   return (
-    <>
-      {children}
+    <div className="page-layout">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {children}
+      </div>
       {!hideNav && <BottomNav />}
-    </>
+    </div>
   )
 }
 

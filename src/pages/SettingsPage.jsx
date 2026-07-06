@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { IconArrowLeft } from '@tabler/icons-react'
 import api from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import AvatarIcon, { AVATAR_OPTIONS, getIcon } from '../components/AvatarIcon'
-import theme from '../styles/theme'
+import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon'
 
 export default function SettingsPage() {
   const { user, logout, updateUser } = useAuth()
@@ -34,11 +34,9 @@ export default function SettingsPage() {
     try {
       const tags = interests.split(',').map(s => s.trim()).filter(Boolean)
       const res = await api.patch('/users/me', {
-        bio: bio.trim(),
-        interests: tags,
+        bio: bio.trim(), interests: tags,
         avatarCategory: avatarCategory || 'default',
-        locationPrivacy,
-        messagePermission,
+        locationPrivacy, messagePermission,
       })
       updateUser(res.data.user)
       setSaved(true)
@@ -57,195 +55,177 @@ export default function SettingsPage() {
     catch { /* */ }
   }
 
-  const selectStyle = (selected, opt) => ({
-    flex: 1, padding: '10px', border: 'none', borderRadius: theme.radius.sm, fontSize: theme.fontSize.sm, fontWeight: 500,
-    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-    background: selected === opt ? theme.accent : theme.bg,
-    color: selected === opt ? '#fff' : theme.text,
-    boxShadow: selected === opt ? `inset 2px 2px 4px ${theme.accentDark}` : theme.shadow.raisedSm,
-  })
+  function SegmentedToggle({ value, options, onChange }) {
+    return (
+      <div style={{ display: 'flex', background: 'var(--bg)', boxShadow: 'var(--shadow-pressed)', borderRadius: 'var(--radius-pill)', padding: 3 }}>
+        {options.map(opt => (
+          <button key={opt.value} type="button"
+            onClick={() => onChange(opt.value)}
+            style={{
+              flex: 1, textAlign: 'center', padding: 'var(--sp-2) 0', fontSize: 'var(--fs-sm)',
+              borderRadius: 'var(--radius-pill)', border: 'none',
+              background: value === opt.value ? 'var(--bg)' : 'transparent',
+              boxShadow: value === opt.value ? 'var(--shadow-raised-sm)' : 'none',
+              color: value === opt.value ? 'var(--primary)' : 'var(--text-muted)',
+              fontWeight: value === opt.value ? 'var(--fw-medium)' : 'var(--fw-regular)',
+              cursor: 'pointer', fontFamily: 'inherit',
+              transition: 'all var(--dur-base) var(--ease-standard)',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
-      <div className="settings-header" style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: `${theme.spacing.lg}px ${theme.spacing.xl}px`,
-        background: '#fff', borderBottom: '1px solid #eee',
-      }}>
-        <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#333', padding: 4 }}>←</button>
-        <h1 style={{ margin: 0, fontSize: theme.fontSize.xl, color: '#333' }}>Settings</h1>
-        <div style={{ width: 30 }} />
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
+      {/* Header */}
+      <div className="settings-header" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', padding: 'var(--sp-3) var(--sp-4)', flexShrink: 0 }}>
+        <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-primary)' }}>
+          <IconArrowLeft size={20} />
+        </button>
+        <h1 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)' }}>Settings</h1>
       </div>
 
-      {message && (
-        <div style={{ margin: `12px ${theme.spacing.xl}px 0`, padding: '10px 14px', borderRadius: 8, background: '#fff0f0', color: theme.error, fontSize: theme.fontSize.sm, textAlign: 'center', border: '1px solid rgba(211,47,47,0.15)' }}>
-          {message}
-        </div>
-      )}
-      {saved && (
-        <div style={{ margin: `12px ${theme.spacing.xl}px 0`, padding: '10px 14px', borderRadius: 8, background: '#e8f5e9', color: theme.success, fontSize: theme.fontSize.sm, textAlign: 'center' }}>
-          Saved!
-        </div>
-      )}
+      {message && <div style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-sm)', textAlign: 'center', padding: 'var(--sp-2) var(--sp-4)' }}>{message}</div>}
+      {saved && <div style={{ color: 'var(--semantic-people)', fontSize: 'var(--fs-sm)', textAlign: 'center', padding: 'var(--sp-2) var(--sp-4)' }}>Saved!</div>}
 
-      <form onSubmit={handleSave} style={{ padding: `${theme.spacing.xl}px` }}>
-        {/* Username + Bio */}
-        <div style={{
-          background: '#fff', borderRadius: 12, padding: 20, marginBottom: 16,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-            <AvatarIcon category={avatarCategory} size={64} />
-            <div>
-              <div style={{ fontSize: 12, color: '#999', marginBottom: 2 }}>Username</div>
-              <div style={{ fontSize: 18, color: '#333', fontWeight: 600 }}>{user?.username}</div>
+      <div className="settings-scroll" style={{ flex: 1, overflowY: 'auto', padding: `0 var(--sp-4) var(--sp-8)` }}>
+        <form onSubmit={handleSave}>
+          {/* Profile section */}
+          <section className="settings-section" style={{ marginBottom: 'var(--sp-8)' }}>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-3)' }}>Profile</div>
+
+            <div className="surface-card" style={{ padding: 'var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
+                <AvatarIcon category={avatarCategory} size={64} />
+                <div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginBottom: 2 }}>Username</div>
+                  <div style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', fontWeight: 'var(--fw-medium)' }}>{user?.username}</div>
+                </div>
+              </div>
+
+              <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--sp-2)' }}>Bio</label>
+              <textarea className="input-field" value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell others about yourself..." maxLength={500} rows={3} />
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textAlign: 'right', marginTop: 'var(--sp-1)' }}>{bio.length}/500</div>
             </div>
-          </div>
-          <label style={{ fontSize: 13, color: '#666', marginBottom: 6, display: 'block', fontWeight: 500 }}>Bio</label>
-          <textarea
-            value={bio}
-            onChange={e => setBio(e.target.value)}
-            placeholder="Tell others about yourself..."
-            maxLength={500}
-            rows={3}
-            style={{
-              width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: 8,
-              fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
-              color: '#333', resize: 'vertical', background: '#fafafa',
-            }}
-          />
-          <div style={{ fontSize: 11, color: '#bbb', textAlign: 'right', marginTop: 4 }}>{bio.length}/500</div>
-        </div>
 
-        {/* Avatar picker */}
-        <div style={{
-          background: '#fff', borderRadius: 12, padding: 20, marginBottom: 16,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        }}>
-          <label style={{ fontSize: 13, color: '#666', marginBottom: 12, display: 'block', fontWeight: 500 }}>Avatar</label>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8,
-          }}>
-            {AVATAR_OPTIONS.map(({ label, emoji }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setAvatarCategory(label)}
-                style={{
-                  padding: '10px 0', border: avatarCategory === label ? '2px solid #4f46e5' : '2px solid transparent',
-                  borderRadius: 12, cursor: 'pointer', background: avatarCategory === label ? '#eef2ff' : '#fafafa',
-                  transition: 'all 0.15s', fontFamily: 'inherit', fontSize: 28,
-                }}
-              >
-                {emoji}
-              </button>
+            {/* Avatar picker */}
+            <div className="surface-card" style={{ padding: 'var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
+              <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--sp-3)' }}>Avatar</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--sp-2)' }}>
+                {AVATAR_OPTIONS.map(({ label, emoji }) => (
+                  <button key={label} type="button" onClick={() => setAvatarCategory(label)}
+                    style={{
+                      width: 48, height: 48, borderRadius: '50%', margin: '0 auto',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 22, border: (avatarCategory || 'default') === label ? '2px solid var(--primary)' : 'none',
+                      background: 'var(--bg)',
+                      boxShadow: (avatarCategory || 'default') === label ? 'var(--shadow-pressed)' : 'var(--shadow-raised-sm)',
+                      cursor: 'pointer', padding: 0,
+                      transition: 'all var(--dur-fast) var(--ease-standard)',
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Interests */}
+            <div className="surface-card" style={{ padding: 'var(--sp-4)' }}>
+              <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--sp-2)' }}>Interests / Job tags</label>
+              <input className="input-field" value={interests} onChange={e => setInterests(e.target.value)} placeholder="plumber, cricket, gardening" />
+            </div>
+          </section>
+
+          {/* Privacy section */}
+          <section className="settings-section" style={{ marginBottom: 'var(--sp-8)' }}>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-3)' }}>Privacy</div>
+
+            <div className="surface-card" style={{ padding: 'var(--sp-4)', marginBottom: 'var(--sp-4)' }}>
+              <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--sp-3)' }}>Location on map</label>
+              <SegmentedToggle
+                value={locationPrivacy}
+                options={[
+                  { value: 'visible', label: 'Visible' },
+                  { value: 'fuzzed', label: 'Fuzzed' },
+                  { value: 'hidden', label: 'Hidden' },
+                ]}
+                onChange={setLocationPrivacy}
+              />
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
+                {locationPrivacy === 'visible' ? 'Others see approximate location (~100m)' :
+                 locationPrivacy === 'fuzzed' ? 'Others see approximate location (~240m)' :
+                 'You are hidden from everyone'}
+              </div>
+            </div>
+
+            <div className="surface-card" style={{ padding: 'var(--sp-4)' }}>
+              <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--sp-3)' }}>Chat requests</label>
+              <SegmentedToggle
+                value={messagePermission}
+                options={[
+                  { value: 'everyone', label: 'Everyone' },
+                  { value: 'matches', label: 'Shared interests' },
+                  { value: 'nobody', label: 'No one' },
+                ]}
+                onChange={setMessagePermission}
+              />
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 'var(--sp-2)' }}>
+                {messagePermission === 'everyone' ? 'Anyone can send you a chat request' :
+                 messagePermission === 'matches' ? 'Only users with matching interests' :
+                 'No one can send you requests'}
+              </div>
+            </div>
+          </section>
+
+          <button className="btn btn-primary btn-full" type="submit" disabled={saving}>
+            {saving ? 'Saving...' : 'Save settings'}
+          </button>
+        </form>
+
+        {/* Pending requests */}
+        {pendingRequests.length > 0 && (
+          <section className="settings-section" style={{ marginTop: 'var(--sp-8)' }}>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: 'var(--sp-3)' }}>
+              Pending requests ({pendingRequests.length})
+            </div>
+            {pendingRequests.map(req => (
+              <div key={req._id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', padding: 'var(--sp-3)', borderRadius: 'var(--radius-md)', background: 'var(--bg)', boxShadow: 'var(--shadow-raised)', marginBottom: 'var(--sp-2)' }}>
+                <AvatarIcon category={req.fromUser?.avatarCategory} size={40} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-medium)', color: 'var(--text-primary)' }}>{req.fromUser?.username}</div>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{req.fromUser?.interests?.join(', ')}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--sp-1)' }}>
+                  <button onClick={() => handleAccept(req._id)}
+                    style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    ✓
+                  </button>
+                  <button onClick={() => handleDecline(req._id)}
+                    style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--text-muted)', background: 'transparent', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    ✕
+                  </button>
+                </div>
+              </div>
             ))}
-          </div>
-        </div>
+          </section>
+        )}
 
-        {/* Interests */}
-        <div style={{
-          background: '#fff', borderRadius: 12, padding: 20, marginBottom: 16,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        }}>
-          <label style={{ fontSize: 13, color: '#666', marginBottom: 6, display: 'block', fontWeight: 500 }}>Interests / Job tags</label>
-          <input
-            value={interests}
-            onChange={e => setInterests(e.target.value)}
-            placeholder="plumber, cricket, gardening"
-            style={{
-              width: '100%', padding: '10px 12px', border: '1px solid #e0e0e0', borderRadius: 8,
-              fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
-              color: '#333', background: '#fafafa',
-            }}
-          />
-        </div>
-
-        {/* Privacy */}
-        <div style={{
-          background: '#fff', borderRadius: 12, padding: 20, marginBottom: 16,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        }}>
-          <h3 style={{ fontSize: 13, color: '#999', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 16px' }}>Privacy</h3>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, color: '#666', marginBottom: 8, display: 'block', fontWeight: 500 }}>Location on map</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['visible', 'fuzzed', 'hidden'].map(opt => (
-                <button key={opt} type="button" style={selectStyle(locationPrivacy, opt)} onClick={() => setLocationPrivacy(opt)}>
-                  {opt === 'visible' ? 'Visible' : opt === 'fuzzed' ? 'Fuzzed' : 'Hidden'}
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>
-              {locationPrivacy === 'visible' ? 'Others see approximate location (~100m)' :
-               locationPrivacy === 'fuzzed' ? 'Others see fuzzed location (~500m)' :
-               'You are hidden from everyone'}
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 13, color: '#666', marginBottom: 8, display: 'block', fontWeight: 500 }}>Chat requests</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['everyone', 'matches', 'nobody'].map(opt => (
-                <button key={opt} type="button" style={selectStyle(messagePermission, opt)} onClick={() => setMessagePermission(opt)}>
-                  {opt === 'everyone' ? 'Everyone' : opt === 'matches' ? 'Shared interests' : 'No one'}
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: 11, color: '#bbb', marginTop: 6 }}>
-              {messagePermission === 'everyone' ? 'Anyone can send you a chat request' :
-               messagePermission === 'matches' ? 'Only users with matching interests' :
-               'No one can send you requests'}
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="submit" disabled={saving}
-          style={{
-            width: '100%', padding: '14px', border: 'none', borderRadius: 10,
-            fontSize: theme.fontSize.lg, fontWeight: 600, color: '#fff', background: theme.accent,
-            cursor: 'pointer', fontFamily: 'inherit', marginBottom: theme.spacing.xxl,
-            transition: 'all 0.15s', opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? 'Saving...' : 'Save settings'}
-        </button>
-      </form>
-
-      {pendingRequests.length > 0 && (
-        <section style={{ padding: `0 ${theme.spacing.xl}px`, marginBottom: theme.spacing.xxl }}>
-          <h2 style={{ fontSize: 13, color: '#999', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, padding: '0 4px' }}>
-            Pending requests ({pendingRequests.length})
-          </h2>
-          {pendingRequests.map(req => (
-            <div key={req._id} style={{
-              display: 'flex', gap: 12, padding: 14, background: '#fff', borderRadius: 12,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 8, alignItems: 'center',
-            }}>
-              <AvatarIcon category={req.fromUser?.avatarCategory} size={40} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>{req.fromUser?.username}</div>
-                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>{req.fromUser?.interests?.join(', ')}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => handleAccept(req._id)} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#e8f5e9', color: theme.success, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>✓</button>
-                <button onClick={() => handleDecline(req._id)} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#fff0f0', color: theme.error, fontSize: 16, cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>✕</button>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <div style={{ padding: `0 ${theme.spacing.xl}px` }}>
+        {/* Logout */}
         <button
           onClick={logout}
           style={{
-            width: '100%', padding: '12px', border: 'none', borderRadius: 10,
-            fontSize: theme.fontSize.md, color: theme.error, background: '#fff',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'pointer', fontFamily: 'inherit',
-            transition: 'all 0.15s', marginBottom: 40,
+            width: '100%', padding: 'var(--sp-3)',
+            border: 'none', borderRadius: 'var(--radius-sm)',
+            fontSize: 'var(--fs-base)', color: 'var(--semantic-danger)',
+            background: 'var(--bg)', boxShadow: 'var(--shadow-raised-sm)',
+            cursor: 'pointer', fontFamily: 'inherit',
+            marginTop: 'var(--sp-8)',
+            transition: 'all var(--dur-fast) var(--ease-standard)',
           }}
         >
           Log out

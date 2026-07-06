@@ -1,21 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { IconMap2, IconSearch, IconMessageCircle } from '@tabler/icons-react'
 import { useAuth } from '../context/AuthContext'
-import theme from '../styles/theme'
 
-const screens = [
+const slides = [
   {
-    emoji: '\u{1F5FA}\uFE0F',
-    title: 'See who\u2019s nearby',
-    desc: 'A live map of people and events around you. Your exact location is never shared \u2014 everything is fuzzed for privacy.',
+    icon: IconMap2,
+    iconTint: 'people',
+    title: "See who's nearby",
+    desc: 'A live map of people and events around you. Your exact location is never shared — everything is fuzzed for privacy.',
   },
   {
-    emoji: '\u{1F50D}',
+    icon: IconSearch,
+    iconTint: 'job',
     title: 'Find your people',
-    desc: 'Search by interest or job \u2014 plumber, cricket, chess. Matching people appear right on the map.',
+    desc: 'Search by interest or job — plumber, cricket, chess. Matching people appear right on the map.',
   },
   {
-    emoji: '\u{1F4AC}',
+    icon: IconMessageCircle,
+    iconTint: 'primary',
     title: 'Anonymous chat',
     desc: 'Only your username shows. Chat requires mutual acceptance. Share your name or contact only if you want to.',
   },
@@ -24,17 +27,34 @@ const screens = [
 export default function Onboarding() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
-  const [step, setStep] = useState(0)
+  const trackRef = useRef(null)
+  const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => {
     if (!loading && !user) navigate('/login', { replace: true })
   }, [user, loading, navigate])
 
-  if (loading) return null
+  const syncIndex = useCallback(() => {
+    const el = trackRef.current
+    if (!el) return
+    const idx = Math.round(el.scrollLeft / el.clientWidth)
+    setActiveIndex(idx)
+  }, [])
+
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el) return
+    el.addEventListener('scroll', syncIndex, { passive: true })
+    return () => el.removeEventListener('scroll', syncIndex)
+  }, [syncIndex])
+
+  function scrollTo(i) {
+    trackRef.current?.children[i]?.scrollIntoView({ behavior: 'smooth', inline: 'start' })
+  }
 
   function handleNext() {
-    if (step < screens.length - 1) {
-      setStep(s => s + 1)
+    if (activeIndex < slides.length - 1) {
+      scrollTo(activeIndex + 1)
     } else {
       complete()
     }
@@ -45,155 +65,37 @@ export default function Onboarding() {
     navigate('/map', { replace: true })
   }
 
-  function skip() {
-    complete()
-  }
+  if (loading || !user) return null
 
-  const s = screens[step]
-  const isLast = step === screens.length - 1
+  const isLast = activeIndex === slides.length - 1
 
   return (
-    <div style={styles.page}>
-      <button onClick={skip} style={styles.skip}>Skip</button>
+    <div className="onboarding-page">
+      <button className="onboarding-skip" onClick={complete}>Skip</button>
 
-      <div style={styles.content}>
-        <div style={styles.emojiWrap}>
-          <span style={styles.emoji}>{s.emoji}</span>
-        </div>
-        <h1 style={styles.title}>{s.title}</h1>
-        <p style={styles.desc}>{s.desc}</p>
+      <div className="carousel-track" ref={trackRef}>
+        {slides.map((s, i) => (
+          <div key={i} className="slide">
+            <div className={`slide-icon slide-icon-${s.iconTint}`}>
+              <s.icon size={64} />
+            </div>
+            <h2>{s.title}</h2>
+            <p>{s.desc}</p>
+          </div>
+        ))}
       </div>
 
-      <div style={styles.bottom}>
-        <div style={styles.dots}>
-          {screens.map((_, i) => (
-            <span key={i} style={{
-              ...styles.dot,
-              background: i === step ? theme.accent : theme.textMuted,
-              width: i === step ? 24 : 8,
-              borderRadius: 4,
-            }} />
+      <div className="carousel-bottom">
+        <div className="dot-indicators">
+          {slides.map((_, i) => (
+            <span key={i} className={`dot ${i === activeIndex ? 'active' : ''}`} />
           ))}
         </div>
 
-        <div style={styles.actions}>
-          {step > 0 && (
-            <button onClick={() => setStep(s => s - 1)} style={styles.backBtn}>
-              Back
-            </button>
-          )}
-          <button onClick={handleNext} style={styles.nextBtn}>
-            {isLast ? 'Get started' : 'Next'}
-          </button>
-        </div>
+        <button className="btn btn-primary" onClick={handleNext}>
+          {isLast ? 'Get started' : 'Next'}
+        </button>
       </div>
     </div>
   )
-}
-
-const styles = {
-  page: {
-    minHeight: '100vh',
-    background: theme.bg,
-    display: 'flex',
-    flexDirection: 'column',
-    padding: `48px ${theme.spacing.xl}px ${theme.spacing.xl}px`,
-    position: 'relative',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-  skip: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    background: 'none',
-    border: 'none',
-    color: theme.textSecondary,
-    fontSize: theme.fontSize.sm,
-    fontWeight: 500,
-    cursor: 'pointer',
-    padding: `${theme.spacing.sm}px ${theme.spacing.md}px`,
-    fontFamily: 'inherit',
-    borderRadius: theme.radius.sm,
-  },
-  content: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center',
-    maxWidth: 400,
-    margin: '0 auto',
-  },
-  emojiWrap: {
-    width: 120,
-    height: 120,
-    borderRadius: theme.radius.xl,
-    background: theme.bg,
-    boxShadow: theme.shadow.card,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 40,
-  },
-  emoji: {
-    fontSize: 56,
-  },
-  title: {
-    fontSize: theme.fontSize.xxl,
-    fontWeight: 700,
-    color: theme.text,
-    marginBottom: theme.spacing.md,
-  },
-  desc: {
-    fontSize: theme.fontSize.md,
-    color: theme.textSecondary,
-    lineHeight: 1.7,
-  },
-  bottom: {
-    paddingTop: theme.spacing.xl,
-  },
-  dots: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 6,
-    marginBottom: theme.spacing.xxl,
-  },
-  dot: {
-    height: 8,
-    borderRadius: 4,
-    transition: 'all 0.3s',
-  },
-  actions: {
-    display: 'flex',
-    gap: theme.spacing.md,
-    justifyContent: 'center',
-  },
-  backBtn: {
-    padding: '14px 24px',
-    borderRadius: theme.radius.md,
-    background: theme.bg,
-    boxShadow: theme.shadow.raisedSm,
-    border: 'none',
-    color: theme.textSecondary,
-    fontSize: theme.fontSize.md,
-    fontWeight: 500,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'all 0.15s',
-  },
-  nextBtn: {
-    padding: '14px 36px',
-    borderRadius: theme.radius.md,
-    background: theme.bg,
-    boxShadow: theme.shadow.raised,
-    border: 'none',
-    color: theme.text,
-    fontSize: theme.fontSize.lg,
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'all 0.15s',
-    minWidth: 140,
-  },
 }

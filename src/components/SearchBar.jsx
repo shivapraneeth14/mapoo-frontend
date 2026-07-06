@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { IconSearch, IconX } from '@tabler/icons-react'
 import api from '../api/client'
-import theme from '../styles/theme'
 
 export default function SearchBar({ onSearch, activeFilter, onClearFilter }) {
   const [query, setQuery] = useState('')
@@ -32,102 +32,52 @@ export default function SearchBar({ onSearch, activeFilter, onClearFilter }) {
   }
 
   return (
-    <div className="map-search" style={{}}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        background: theme.bg,
-        borderRadius: theme.radius.lg,
-        padding: '0 16px',
-        boxShadow: theme.shadow.raised,
-      }}>
-        <span style={{ fontSize: 16, marginRight: 10, opacity: 0.5 }}>🔍</span>
+    <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+      <div className="search-bar">
+        <IconSearch size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         <input
-          style={{
-            flex: 1,
-            border: 'none',
-            outline: 'none',
-            background: 'transparent',
-            padding: '14px 0',
-            fontSize: theme.fontSize.md,
-            color: theme.text,
-            fontFamily: 'inherit',
-          }}
           type="text"
           placeholder="Search interest..."
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        {query && (
+        {(query || activeFilter) && (
           <button
+            onClick={() => { setQuery(''); setSuggestions([]); onClearFilter?.() }}
             style={{
               border: 'none', background: 'none', cursor: 'pointer',
-              fontSize: 14, color: theme.textMuted, padding: '4px 8px',
+              padding: 0, display: 'flex', color: 'var(--text-muted)', flexShrink: 0,
             }}
-            onClick={() => { setQuery(''); setSuggestions([]) }}
           >
-            ✕
+            <IconX size={14} />
           </button>
         )}
       </div>
 
       {query.trim() && suggestions.length > 0 && (
         <div style={{
-          marginTop: 8,
-          background: theme.bg,
-          borderRadius: theme.radius.lg,
-          boxShadow: theme.shadow.cardSm,
-          overflow: 'hidden',
-          maxHeight: 320,
-          overflowY: 'auto',
+          position: 'absolute', top: 'calc(100% + var(--sp-2))',
+          left: 0, right: 0,
+          background: 'var(--bg)', boxShadow: 'var(--shadow-raised)',
+          borderRadius: 'var(--radius-sm)',
+          maxHeight: 240, overflowY: 'auto', zIndex: 10,
+          animation: 'fadeIn var(--dur-fast) var(--ease-standard) forwards',
         }}>
           {suggestions.map(s => (
             <div
               key={s}
-              style={{
-                padding: '12px 16px',
-                cursor: 'pointer',
-                fontSize: theme.fontSize.md,
-                color: theme.text,
-                fontWeight: 500,
-                borderBottom: '1px solid rgba(0,0,0,0.04)',
-                transition: 'background 0.15s',
-              }}
               onMouseDown={() => handleSelect(s)}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              style={{
+                padding: 'var(--sp-3) var(--sp-4)',
+                cursor: 'pointer', fontSize: 'var(--fs-base)',
+                color: 'var(--text-primary)',
+                transition: 'background var(--dur-fast)',
+              }}
             >
               {s}
             </div>
           ))}
-        </div>
-      )}
-
-      {activeFilter && (
-        <div style={{
-          marginTop: 8,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 12px',
-          borderRadius: theme.radius.md,
-          background: theme.accent,
-          color: '#fff',
-          fontSize: theme.fontSize.sm,
-          fontWeight: 500,
-        }}>
-          {activeFilter}
-          <button
-            style={{
-              border: 'none', background: 'none', cursor: 'pointer',
-              color: '#fff', fontSize: 14, padding: 0, lineHeight: 1,
-              opacity: 0.8,
-            }}
-            onClick={onClearFilter}
-          >
-            ✕
-          </button>
         </div>
       )}
     </div>

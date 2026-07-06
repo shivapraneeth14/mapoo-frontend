@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { IconAlertTriangle } from '@tabler/icons-react'
 import api from '../api/client'
 import PasswordChecklist from '../components/PasswordChecklist'
-import theme from '../styles/theme'
 
 export default function ResetPassword() {
   const { token } = useParams()
@@ -11,6 +11,7 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [invalidToken, setInvalidToken] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -21,54 +22,79 @@ export default function ResetPassword() {
       await api.post(`/auth/reset-password/${token}`, { password })
       navigate('/login', { state: { reset: true } })
     } catch (err) {
-      setError(err.response?.data?.error || 'Reset failed')
-    } finally {
-      setLoading(false)
-    }
+      const msg = err.response?.data?.error || 'Reset failed'
+      if (msg.toLowerCase().includes('expired') || msg.toLowerCase().includes('invalid')) {
+        setInvalidToken(true)
+      }
+      setError(msg)
+    } finally { setLoading(false) }
+  }
+
+  if (invalidToken) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card" style={{ textAlign: 'center' }}>
+          <div style={{ marginBottom: 'var(--sp-4)', display: 'flex', justifyContent: 'center' }}>
+            <IconAlertTriangle size={40} style={{ color: 'var(--semantic-danger)' }} />
+          </div>
+          <h1 className="auth-title" style={{ textAlign: 'center' }}>Link expired</h1>
+          <p className="auth-subtext" style={{ textAlign: 'center' }}>
+            This reset link is no longer valid. Request a new one.
+          </p>
+          <Link to="/forgot-password" className="btn btn-primary" style={{ display: 'inline-block', marginTop: 'var(--sp-4)' }}>
+            Request new reset link
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div style={styles.wrapper}>
-      <div className="form-card" style={styles.card}>
-        <h1 style={styles.title}>New password</h1>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1 className="auth-title">reset your password</h1>
+
+        {error && (
+          <div className="field-group" style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-sm)', textAlign: 'center', background: 'var(--semantic-danger-bg)', padding: 'var(--sp-3) var(--sp-4)', borderRadius: 'var(--radius-sm)' }}>
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
-          {error && <div style={styles.error}>{error}</div>}
-          <input
-            style={styles.input}
-            type="password"
-            placeholder="New password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-          />
-          {password.length > 0 && <PasswordChecklist password={password} />}
-          <input
-            style={{ ...styles.input, marginTop: theme.spacing.sm }}
-            type="password"
-            placeholder="Confirm new password"
-            value={confirm}
-            onChange={e => setConfirm(e.target.value)}
-            required
-          />
-          <button style={styles.button} type="submit" disabled={loading}>
+          <div className="field-group">
+            <label>New password</label>
+            <input
+              className="input-field"
+              type="password"
+              placeholder="Enter new password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
+            {password.length > 0 && <PasswordChecklist password={password} />}
+          </div>
+
+          <div className="field-group">
+            <label>Confirm new password</label>
+            <input
+              className="input-field"
+              type="password"
+              placeholder="Re-enter new password"
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              required
+            />
+          </div>
+
+          <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
             {loading ? 'Resetting...' : 'Reset password'}
           </button>
-          <div style={styles.links}>
-            <Link to="/login" style={styles.link}>Back to login</Link>
-          </div>
         </form>
+
+        <div className="auth-switch" style={{ marginTop: 'var(--sp-4)' }}>
+          <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 'var(--fw-medium)' }}>Back to log in</Link>
+        </div>
       </div>
     </div>
   )
-}
-
-const styles = {
-  wrapper: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.bg, padding: theme.spacing.xl },
-  card: { width: '100%', maxWidth: 380, padding: 40, borderRadius: theme.radius.xl, background: theme.bg, boxShadow: theme.shadow.card },
-  title: { margin: '0 0 24px', fontSize: theme.fontSize.xxl, textAlign: 'center', color: theme.text },
-  input: { width: '100%', padding: '14px 16px', border: 'none', borderRadius: theme.radius.md, fontSize: theme.fontSize.md, background: theme.bg, boxShadow: theme.shadow.pressed, outline: 'none', boxSizing: 'border-box', color: theme.text, fontFamily: 'inherit' },
-  button: { width: '100%', padding: '14px', border: 'none', borderRadius: theme.radius.md, fontSize: theme.fontSize.lg, fontWeight: 600, color: theme.text, background: theme.bg, boxShadow: theme.shadow.raised, cursor: 'pointer', marginTop: theme.spacing.lg, fontFamily: 'inherit' },
-  error: { background: '#fff0f0', color: theme.error, padding: '10px 14px', borderRadius: theme.radius.sm, marginBottom: theme.spacing.md, fontSize: theme.fontSize.sm, textAlign: 'center' },
-  links: { textAlign: 'center', marginTop: theme.spacing.xl, fontSize: theme.fontSize.sm },
-  link: { color: theme.textSecondary, textDecoration: 'none' },
 }

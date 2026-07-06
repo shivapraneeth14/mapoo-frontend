@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { IconMail } from '@tabler/icons-react'
 import api from '../api/client'
-import theme from '../styles/theme'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -17,57 +17,66 @@ export default function ForgotPassword() {
       await api.post('/auth/forgot-password', { email })
       setSent(true)
     } catch (err) {
-      setError(err.response?.data?.error || 'Something went wrong')
-    } finally {
-      setLoading(false)
-    }
+      setError(err.response?.data?.error || 'Failed to send reset email')
+    } finally { setLoading(false) }
+  }
+
+  if (sent) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card" style={{ textAlign: 'center' }}>
+          <div style={{ marginBottom: 'var(--sp-4)', display: 'flex', justifyContent: 'center' }}>
+            <IconMail size={40} style={{ color: 'var(--primary)' }} />
+          </div>
+          <h1 className="auth-title" style={{ textAlign: 'center' }}>Check your email</h1>
+          <p className="auth-subtext" style={{ textAlign: 'center' }}>
+            If an account exists for <strong>{email}</strong>, we've sent a password reset link.
+            It expires in 30 minutes.
+          </p>
+          <Link to="/login" className="btn btn-primary" style={{ display: 'inline-block', marginTop: 'var(--sp-4)', textAlign: 'center' }}>
+            Back to log in
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div style={styles.wrapper}>
-      <div className="form-card" style={styles.card}>
-        <div style={{ textAlign: 'center', fontSize: 36, marginBottom: 12 }}>🔐</div>
-        <h1 style={styles.title}>Reset password</h1>
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1 className="auth-title">reset your password</h1>
+        <p className="auth-subtext">
+          Enter your email and we'll send you a link to reset your password.
+        </p>
 
-        {sent ? (
-          <div style={{ textAlign: 'center' }}>
-            <p style={styles.success}>
-              If that email exists, a reset link was sent.
-            </p>
-            <Link to="/login" style={styles.link}>Back to login</Link>
+        {error && (
+          <div className="field-group" style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-sm)', textAlign: 'center', background: 'var(--semantic-danger-bg)', padding: 'var(--sp-3) var(--sp-4)', borderRadius: 'var(--radius-sm)' }}>
+            {error}
           </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            {error && <div style={styles.error}>{error}</div>}
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="field-group">
+            <label>Email</label>
             <input
-              style={styles.input}
+              className="input-field"
               type="email"
-              placeholder="Your email"
+              placeholder="your@email.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
             />
-            <button style={styles.button} type="submit" disabled={loading}>
-              {loading ? 'Sending...' : 'Send reset link'}
-            </button>
-            <div style={styles.links}>
-              <Link to="/login" style={styles.link}>Back to login</Link>
-            </div>
-          </form>
-        )}
+          </div>
+
+          <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
+            {loading ? 'Sending...' : 'Send reset link'}
+          </button>
+        </form>
+
+        <div className="auth-switch" style={{ marginTop: 'var(--sp-4)' }}>
+          <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 'var(--fw-medium)' }}>Back to log in</Link>
+        </div>
       </div>
     </div>
   )
-}
-
-const styles = {
-  wrapper: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.bg, padding: theme.spacing.xl },
-  card: { width: '100%', maxWidth: 380, padding: 40, borderRadius: theme.radius.xl, background: theme.bg, boxShadow: theme.shadow.card },
-  title: { margin: '0 0 24px', fontSize: theme.fontSize.xxl, textAlign: 'center', color: theme.text },
-  input: { width: '100%', padding: '14px 16px', marginBottom: theme.spacing.md, border: 'none', borderRadius: theme.radius.md, fontSize: theme.fontSize.md, background: theme.bg, boxShadow: theme.shadow.pressed, outline: 'none', boxSizing: 'border-box', color: theme.text, fontFamily: 'inherit' },
-  button: { width: '100%', padding: '14px', border: 'none', borderRadius: theme.radius.md, fontSize: theme.fontSize.lg, fontWeight: 600, color: theme.text, background: theme.bg, boxShadow: theme.shadow.raised, cursor: 'pointer', fontFamily: 'inherit' },
-  error: { background: '#fff0f0', color: theme.error, padding: '10px 14px', borderRadius: theme.radius.sm, marginBottom: theme.spacing.md, fontSize: theme.fontSize.sm, textAlign: 'center' },
-  success: { color: theme.success, fontSize: theme.fontSize.md, marginBottom: theme.spacing.lg },
-  links: { textAlign: 'center', marginTop: theme.spacing.xl, fontSize: theme.fontSize.sm },
-  link: { color: theme.textSecondary, textDecoration: 'none' },
 }

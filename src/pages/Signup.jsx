@@ -1,13 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { IconEye, IconEyeOff, IconLoader2, IconCircleCheckFilled, IconX } from '@tabler/icons-react'
 import { useAuth } from '../context/AuthContext'
 import PasswordChecklist from '../components/PasswordChecklist'
+import { getIcon } from '../components/AvatarIcon'
 import api from '../api/client'
-import theme from '../styles/theme'
+
+const avatarOptions = [
+  'default', 'plumber', 'cricket', 'gardening', 'cooking',
+  'photography', 'sports', 'music', 'fitness', 'art',
+  'doctor', 'teacher', 'electrician', 'driver', 'carpenter',
+  'mechanic', 'painter', 'yoga', 'chef', 'cleaning',
+]
 
 export default function Signup() {
   const { signup } = useAuth()
   const navigate = useNavigate()
+  const [step, setStep] = useState(1)
   const [form, setForm] = useState({ email: '', username: '', password: '', confirmPassword: '' })
   const [errors, setErrors] = useState({})
   const [usernameAvailable, setUsernameAvailable] = useState(null)
@@ -16,30 +25,31 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
+  // Step 2 state
+  const [avatarCategory, setAvatarCategory] = useState('')
+  const [interests, setInterests] = useState([])
+  const [interestInput, setInterestInput] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  // Debounced username check
   useEffect(() => {
-    if (form.username.length < 3) {
-      setUsernameAvailable(null)
-      return
-    }
+    if (form.username.length < 3) { setUsernameAvailable(null); return }
     setCheckingUsername(true)
     const timer = setTimeout(async () => {
       try {
         const res = await api.get(`/auth/check-username/${encodeURIComponent(form.username)}`)
         setUsernameAvailable(res.data.available)
-      } catch {
-        setUsernameAvailable(null)
-      } finally {
-        setCheckingUsername(false)
-      }
-    }, 500)
+      } catch { setUsernameAvailable(null) }
+      finally { setCheckingUsername(false) }
+    }, 400)
     return () => clearTimeout(timer)
   }, [form.username])
 
-  function validate() {
+  function validateStep1() {
     const e = {}
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email format'
-    if (form.username.length < 3 || form.username.length > 20) e.username = 'Must be 3-20 characters'
-    if (!/^[a-zA-Z0-9_]+$/.test(form.username)) e.username = 'Letters, numbers, and underscores only'
+    if (form.username.length < 3 || form.username.length > 20) e.username = 'Must be 3–20 characters'
+    if (!/^[a-zA-Z0-9_]+$/.test(form.username)) e.username = 'Letters, numbers, underscores only'
     if (usernameAvailable === false) e.username = 'Username already taken'
     if (form.password.length < 8) e.password = 'At least 8 characters'
     if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match'
@@ -47,165 +57,266 @@ export default function Signup() {
     return Object.keys(e).length === 0
   }
 
-  async function handleSubmit(e) {
+  async function handleStep1(e) {
     e.preventDefault()
-    if (!validate()) return
+    if (!validateStep1()) return
     setLoading(true)
     try {
       await signup({ email: form.email, username: form.username, password: form.password })
-      navigate('/onboarding', { replace: true })
+      setStep(2)
     } catch (err) {
       const data = err.response?.data
       if (data?.field) setErrors(prev => ({ ...prev, [data.field]: data.error }))
       else setErrors(prev => ({ ...prev, general: data?.error || 'Signup failed' }))
-    } finally {
-      setLoading(false)
+    } finally { setLoading(false) }
+  }
+
+  async function handleStartExploring() {
+    setSavingProfile(true)
+    try {
+      await api.patch('/users/me', {
+        avatarCategory: avatarCategory || 'default',
+        interests,
+      })
+    } catch { /* silent — non-critical */ }
+    setSavingProfile(false)
+    navigate('/onboarding', { replace: true })
+  }
+
+  function handleSkip() {
+    navigate('/onboarding', { replace: true })
+  }
+
+  function addInterest(tag) {
+    const t = tag.trim().toLowerCase()
+    if (t && !interests.includes(t)) {
+      setInterests(prev => [...prev, t])
+    }
+    setInterestInput('')
+  }
+
+  function removeInterest(tag) {
+    setInterests(prev => prev.filter(t => t !== tag))
+  }
+
+  function handleInterestKey(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addInterest(interestInput)
     }
   }
 
-  return (
-    <div style={styles.wrapper}>
-      <div className="form-card" style={styles.card}>
-        <h1 style={styles.title}>Create account</h1>
-        <p style={styles.subtitle}>Join mapoo</p>
+  if (step === 2) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <h1 className="auth-title">who should we introduce you to?</h1>
+          <p className="auth-subtext" style={{ marginBottom: 'var(--sp-6)', fontSize: 'var(--fs-sm)' }}>
+            You can change this anytime in settings
+          </p>
 
-        {errors.general && <div style={styles.error}>{errors.general}</div>}
+          <div style={{ marginBottom: 'var(--sp-6)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--sp-2)' }}>
+              {avatarOptions.map(key => {
+                const selected = (avatarCategory || 'default') === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setAvatarCategory(key)}
+                    style={{
+                      width: 48, height: 48, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 22, border: selected ? '2px solid var(--primary)' : 'none',
+                      background: 'var(--bg)',
+                      boxShadow: selected ? 'var(--shadow-pressed)' : 'var(--shadow-raised-sm)',
+                      cursor: 'pointer', padding: 0, margin: '0 auto',
+                      transition: 'all var(--dur-fast) var(--ease-standard)',
+                    }}
+                  >
+                    {getIcon(key)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            style={{ ...styles.input, marginBottom: errors.email ? 4 : theme.spacing.md }}
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={e => setForm({ ...form, email: e.target.value })}
-            required
-          />
-          {errors.email && <div style={styles.fieldError}>{errors.email}</div>}
-
-          <div style={{ position: 'relative', marginBottom: errors.username ? 4 : theme.spacing.md }}>
+          <div style={{ marginBottom: 'var(--sp-6)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)', marginBottom: 'var(--sp-2)' }}>
+              {interests.map(tag => (
+                <span key={tag} className="animate-scale-pop" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)',
+                  padding: 'var(--sp-1) var(--sp-3)',
+                  borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-sm)',
+                  background: 'color-mix(in srgb, var(--primary) 10%, var(--bg))',
+                  color: 'var(--primary-dark)',
+                }}>
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeInterest(tag)}
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-muted)' }}
+                  >
+                    <IconX size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
             <input
-              style={styles.input}
+              className="input-field"
+              style={{ height: 40, fontSize: 'var(--fs-sm)' }}
               type="text"
-              placeholder="Username"
-              value={form.username}
-              onChange={e => setForm({ ...form, username: e.target.value })}
+              placeholder="Type an interest and press Enter (e.g., plumber, chess, yoga)"
+              value={interestInput}
+              onChange={e => setInterestInput(e.target.value)}
+              onKeyDown={handleInterestKey}
+            />
+          </div>
+
+          <button
+            className="btn btn-primary btn-full"
+            onClick={handleStartExploring}
+            disabled={savingProfile}
+            style={{ marginBottom: 'var(--sp-3)' }}
+          >
+            {savingProfile ? 'Saving...' : 'Start exploring'}
+          </button>
+
+          <button
+            className="btn-ghost"
+            onClick={handleSkip}
+            style={{ display: 'block', margin: '0 auto', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}
+          >
+            Skip for now
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <h1 className="auth-title">create your account</h1>
+
+        {errors.general && (
+          <div className="field-group" style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-sm)', textAlign: 'center', background: 'var(--semantic-danger-bg)', padding: 'var(--sp-3) var(--sp-4)', borderRadius: 'var(--radius-sm)' }}>
+            {errors.general}
+          </div>
+        )}
+
+        <form onSubmit={handleStep1}>
+          <div className="field-group">
+            <label>Email</label>
+            <input
+              className="input-field"
+              type="email"
+              placeholder="your@email.com"
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
               required
             />
-            {checkingUsername && <span style={styles.checking}>checking...</span>}
+            {errors.email && <div style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>{errors.email}</div>}
+          </div>
+
+          <div className="field-group">
+            <label>Username</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input-field"
+                type="text"
+                placeholder="Choose a username"
+                value={form.username}
+                onChange={e => setForm({ ...form, username: e.target.value })}
+                required
+              />
+              <div style={{ position: 'absolute', right: 'var(--sp-3)', top: 0, bottom: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                {checkingUsername && <IconLoader2 size={16} className="spinner" style={{ color: 'var(--text-muted)' }} />}
+                {!checkingUsername && usernameAvailable === true && form.username.length >= 3 && (
+                  <IconCircleCheckFilled size={16} style={{ color: 'var(--semantic-people)' }} />
+                )}
+                {!checkingUsername && usernameAvailable === false && form.username.length >= 3 && (
+                  <IconX size={16} style={{ color: 'var(--semantic-danger)' }} />
+                )}
+              </div>
+            </div>
             {!checkingUsername && usernameAvailable === true && form.username.length >= 3 && (
-              <span style={{ ...styles.indicator, color: theme.success }}>✓ available</span>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--semantic-people)', marginTop: 'var(--sp-1)' }}>username available</div>
             )}
             {!checkingUsername && usernameAvailable === false && form.username.length >= 3 && (
-              <span style={{ ...styles.indicator, color: theme.error }}>✕ taken</span>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--semantic-danger)', marginTop: 'var(--sp-1)' }}>username taken</div>
             )}
+            {errors.username && <div style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>{errors.username}</div>}
           </div>
-          {errors.username && <div style={styles.fieldError}>{errors.username}</div>}
 
-          <div style={{ position: 'relative', marginBottom: errors.password ? 4 : theme.spacing.sm }}>
-            <input
-              style={{ ...styles.input, paddingRight: 44 }}
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Password"
-              value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-              required
-            />
-            <button
-              type="button"
-              style={styles.eyeBtn}
-              onClick={() => setShowPassword(!showPassword)}
-              tabIndex={-1}
-            >
-              {showPassword ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                  <line x1="1" y1="1" x2="23" y2="23"/>
-                  <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              )}
-            </button>
+          <div className="field-group">
+            <label>Password</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input-field"
+                style={{ paddingRight: 44 }}
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Create a strong password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+                style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 24, height: 24, color: 'var(--text-muted)',
+                }}
+              >
+                {showPassword ? <IconEyeOff size={20} /> : <IconEye size={20} />}
+              </button>
+            </div>
+            {form.password.length > 0 && <PasswordChecklist password={form.password} />}
+            {errors.password && <div style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>{errors.password}</div>}
           </div>
-          {form.password.length > 0 && <PasswordChecklist password={form.password} />}
-          {errors.password && <div style={styles.fieldError}>{errors.password}</div>}
 
-          <div style={{ position: 'relative', marginBottom: errors.confirmPassword ? 4 : theme.spacing.md }}>
-            <input
-              style={{ ...styles.input, paddingRight: 44 }}
-              type={showConfirm ? 'text' : 'password'}
-              placeholder="Confirm password"
-              value={form.confirmPassword}
-              onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
-              required
-            />
-            <button
-              type="button"
-              style={styles.eyeBtn}
-              onClick={() => setShowConfirm(!showConfirm)}
-              tabIndex={-1}
-            >
-              {showConfirm ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                  <line x1="1" y1="1" x2="23" y2="23"/>
-                  <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              )}
-            </button>
+          <div className="field-group">
+            <label>Confirm password</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input-field"
+                style={{ paddingRight: 44 }}
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="Re-enter your password"
+                value={form.confirmPassword}
+                onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                tabIndex={-1}
+                style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 24, height: 24, color: 'var(--text-muted)',
+                }}
+              >
+                {showConfirm ? <IconEyeOff size={20} /> : <IconEye size={20} />}
+              </button>
+            </div>
+            {errors.confirmPassword && <div style={{ color: 'var(--semantic-danger)', fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>{errors.confirmPassword}</div>}
           </div>
-          {errors.confirmPassword && <div style={styles.fieldError}>{errors.confirmPassword}</div>}
 
-          <button style={styles.button} type="submit" disabled={loading}>
-            {loading ? 'Creating account...' : 'Create account'}
+          <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
+            {loading ? 'Creating account...' : 'Continue'}
           </button>
         </form>
 
-        <div style={styles.links}>
-          <Link to="/login" style={styles.link}>Already have an account? Log in</Link>
+        <div className="auth-switch" style={{ marginTop: 'var(--sp-4)' }}>
+          Already have an account? <Link to="/login">Log in</Link>
         </div>
       </div>
     </div>
   )
-}
-
-const styles = {
-  wrapper: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: theme.bg, padding: theme.spacing.xl },
-  card: { width: '100%', maxWidth: 380, padding: 40, borderRadius: theme.radius.xl, background: theme.bg, boxShadow: theme.shadow.card },
-  title: { margin: 0, fontSize: theme.fontSize.xxl, textAlign: 'center', color: theme.text },
-  subtitle: { textAlign: 'center', color: theme.textSecondary, marginTop: 4, marginBottom: theme.spacing.xxl, fontSize: theme.fontSize.md },
-  input: { width: '100%', padding: '14px 16px', border: 'none', borderRadius: theme.radius.md, fontSize: theme.fontSize.md, background: theme.bg, boxShadow: theme.shadow.pressed, outline: 'none', boxSizing: 'border-box', color: theme.text, fontFamily: 'inherit', transition: 'box-shadow 0.2s' },
-  button: { width: '100%', padding: '14px', border: 'none', borderRadius: theme.radius.md, fontSize: theme.fontSize.lg, fontWeight: 600, color: theme.text, background: theme.bg, boxShadow: theme.shadow.raised, cursor: 'pointer', marginTop: theme.spacing.md, fontFamily: 'inherit' },
-  error: { background: '#fff0f0', color: theme.error, padding: '10px 14px', borderRadius: theme.radius.sm, marginBottom: theme.spacing.md, fontSize: theme.fontSize.sm, textAlign: 'center', border: '1px solid rgba(211,47,47,0.15)' },
-  fieldError: { color: theme.error, fontSize: theme.fontSize.xs, marginBottom: theme.spacing.sm, marginLeft: 4 },
-  checking: { position: 'absolute', right: 12, top: 14, fontSize: theme.fontSize.xs, color: theme.textMuted },
-  indicator: { position: 'absolute', right: 12, top: 14, fontSize: theme.fontSize.xs, fontWeight: 600 },
-  links: { textAlign: 'center', marginTop: theme.spacing.xl, fontSize: theme.fontSize.sm },
-  link: { color: theme.textSecondary, textDecoration: 'none' },
-  eyeBtn: {
-    position: 'absolute',
-    right: 8,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    padding: 4,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.radius.sm,
-    color: theme.textSecondary,
-    opacity: 0.7,
-  },
 }
